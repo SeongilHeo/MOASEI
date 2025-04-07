@@ -237,6 +237,9 @@ def render(path: str,
     clock = pygame.time.Clock()
     df = pd.read_csv(path)
 
+    df = df.iloc[2:]  # skip first two rows
+    df.reset_index(drop=True, inplace=True) 
+
     # Convert certain columns from string to actual Python lists
     array_like_cols = [
         'fires',
@@ -579,9 +582,9 @@ def render(path: str,
                         # If valid fire_number, draw arrow from agent to that fire
                         # if 0 <= fire_num <= len(fire_positions):
                         # Get the (row, col) of that fire from row-major list
-                        fire_to_supress = next((fire for fire in fire_positions if fire.get("fire") == fire_num), None)
-                        fire_row = fire_to_supress['y']
-                        fire_col = fire_to_supress['x']
+                        fire_to_supress = [r for r in state_record[t] if r["type"]=="fire" and r["intensity"] > 0][fire_num]
+                        fire_row = fire_to_supress['row']
+                        fire_col = fire_to_supress['col']
 
                         # Draw arrow from agent -> that fire cell
                         z_surf = big_font.render(f"Supress Fire {fire_num}", True, (0, 0, 250))
