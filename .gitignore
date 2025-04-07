@@ -2,7 +2,7 @@ my_secrets.py
 **/plotting/*-paper*
 *.csv
 *.gif
-*.pkl
+# *.pkl
 *.prof
 *.pth
 
