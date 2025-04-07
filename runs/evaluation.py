@@ -70,7 +70,7 @@ def test() -> None:
     """
     # TODO: For other domains, swap environment initialization and agent names
 
-    with open(f"competition_configs/wildfire/{args.config}.pkl", "rb") as f:
+    with open(f"configs/wildfire/{args.config}.pkl", "rb") as f:
         wildfire_configuration = pickle.load(f)
 
     agents = ['firefighter_1', 'firefighter_2', 'firefighter_3']
