@@ -582,7 +582,11 @@ def render(path: str,
                         # If valid fire_number, draw arrow from agent to that fire
                         # if 0 <= fire_num <= len(fire_positions):
                         # Get the (row, col) of that fire from row-major list
-                        fire_to_supress = [r for r in state_record[t] if r["type"]=="fire" and r["intensity"] > 0][fire_num]
+                        burning_fire = [fire for fire in state_record[t] if fire['type']=='fire' and fire['intensity']>0]
+                        if fire_num < 0 or fire_num >= len(burning_fire):
+                            continue
+                        fire_to_supress = burning_fire[fire_num]
+                         
                         fire_row = fire_to_supress['row']
                         fire_col = fire_to_supress['col']
 
