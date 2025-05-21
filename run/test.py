@@ -1,3 +1,4 @@
+
 from free_range_zoo.envs import wildfire_v0
 from free_range_zoo.wrappers.action_task import action_mapping_wrapper_v0
 from free_range_zoo.envs.wildfire.env.utils.rendering import render
@@ -8,7 +9,7 @@ import time
 
 
 def main(args):
-    with open(f"configs/wildfire/{args.pkl}.pkl", "rb") as f:
+    with open(f"competition_configs/wildfire/{args.pkl}.pkl", "rb") as f:
         wildfire_configuration = pickle.load(f)
 
     env = wildfire_v0.parallel_env(
@@ -17,7 +18,7 @@ def main(args):
         configuration=wildfire_configuration,
         device=torch.device("cpu"),
         buffer_size=args.buffer_size,
-        show_bad_actions=True,
+        show_bad_actions=False,
         observe_other_power=False,
         observe_other_suppressant=False,
         log_directory=f"test_logging/{args.log}",
@@ -28,17 +29,21 @@ def main(args):
     env = action_mapping_wrapper_v0(env)
     observations, infos = env.reset()
 
-    from free_range_zoo.envs.wildfire.baselines import (
-        NoopBaseline,
-        RandomBaseline,
-        StrongestBaseline,
-        WeakestBaseline
+    from free_range_zoo.envs.wildfire.agents import (
+        MohitoActor,
+        MohitoAgent
     )
 
+    from free_range_zoo.envs.wildfire.baselines import (
+        RandomBaseline,
+        StrongestBaseline
+    )
+
+
     agents = {
-        env.agents[0]: RandomBaseline(agent_name="firefighter_1", parallel_envs=1),
-        env.agents[1]: RandomBaseline(agent_name="firefighter_2", parallel_envs=1),
-        env.agents[2]: RandomBaseline(agent_name="firefighter_3", parallel_envs=1),
+        env.agents[0]: MohitoAgent(agent_name="firefighter_1", parallel_envs=1),
+        env.agents[1]: MohitoAgent(agent_name="firefighter_2", parallel_envs=1),
+        env.agents[2]: MohitoAgent(agent_name="firefighter_3", parallel_envs=1),
     }
 
     while not torch.all(env.finished):
@@ -69,7 +74,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-pkl",
         type=str,
-        default="WS2",
+        default="WS1",
         help="",
     )
     parser.add_argument(

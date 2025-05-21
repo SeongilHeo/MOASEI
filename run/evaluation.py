@@ -1,4 +1,4 @@
-"""Evaluate wildfire baselines on testing configurations."""
+"""Evaluate wildfire trained model on testing configurations."""
 
 import warnings
 
@@ -13,33 +13,36 @@ import pickle
 
 from free_range_zoo.envs import wildfire_v0
 from free_range_zoo.wrappers.action_task import action_mapping_wrapper_v0
-from free_range_zoo.envs.wildfire.baselines import NoopBaseline, RandomBaseline, StrongestBaseline, WeakestBaseline
-from free_range_zoo.envs.wildfire.agents import MohitoActor
-from free_range_zoo.envs.wildfire.agents import SharedPolicy
 from free_range_zoo.envs.wildfire.env.utils.rendering import render
 
-FORMAT_STRING = "[%(asctime)s] [%(levelname)8s] [%(name)10s] [%(filename)21s:%(lineno)03d] %(message)s"
 
+from core import GNNAgent
+
+FORMAT_STRING = "[%(asctime)s] [%(levelname)8s] [%(name)10s] [%(filename)21s:%(lineno)03d] %(message)s"
 
 def main() -> None:
     """Run the training experiment."""
     global device, args #, dataset
     args = handle_args()
-
+    
+    # Set log level
     test_logger.setLevel(args.log_level)
     main_logger.setLevel(args.log_level)
 
+    # Set device
     device = torch.device('cuda' if args.cuda and torch.cuda.is_available() else 'cpu')
 
+    # Set number of threads
     if args.threads > 1:
         torch.set_num_threads(args.threads)
 
+    # Make directory of output
     os.makedirs(args.output, exist_ok=True)
 
     if os.path.exists(args.output):
         main_logger.warning(f'Output directory {args.output} already exists and may contain artifacts from a previous run.')
 
-    main_logger.info(f'Running the baseline experiment on device {device} and parameters:')
+    main_logger.info(f'Running the trained model {args.model} on device {device} and parameters:')
     for key, value in vars(args).items():
         main_logger.info(f'- {key}: {value}')
 
@@ -68,12 +71,9 @@ def test() -> None:
     Args:
         model: nn.Module - The model to validate.
     """
-    # TODO: For other domains, swap environment initialization and agent names
-
-    with open(f"configs/wildfire/{args.config}.pkl", "rb") as f:
+    with open(args.config, "rb") as f:
         wildfire_configuration = pickle.load(f)
 
-    agents = ['firefighter_1', 'firefighter_2', 'firefighter_3']
     env = wildfire_v0.parallel_env(
         parallel_envs=args.testing_episodes,
         max_steps=50,
@@ -81,7 +81,7 @@ def test() -> None:
         configuration=wildfire_configuration,
         buffer_size=50,
         single_seeding=True,
-        show_bad_actions=True,
+        show_bad_actions=False,
         log_directory=args.output,
         override_initialization_check=True,
     )
@@ -89,52 +89,58 @@ def test() -> None:
     env = action_mapping_wrapper_v0(env)
     observation, _ = env.reset(seed=0)
 
+    # Load checkpoint
+    shared_model = torch.load(args.model, map_location='cpu', weights_only=False)
+
+    # Wrap into Agents
     agents = {}
     for agent_name in env.agents:
-        agents[agent_name] = MohitoActor(agent_name=agent_name, parallel_envs=args.testing_episodes)
-
-    # Load saved shared policy model weights and apply to all agents
-    # model_save_path = os.path.join(args.model, "shared_policy_model.pth")
-    # if not os.path.exists(model_save_path):
-    #     main_logger.error(f"Model file {model_save_path} does not exist. Exiting.")
-    #     sys.exit(1)
-    # state_dict = torch.load(model_save_path, map_location=device)
-    # for agent in agents.values():
-    #     agent.policy.load_state_dict(state_dict)
-    #     agent.policy.to(device)
-    # main_logger.info(f"Loaded shared policy model from {model_save_path}")
+        agents[agent_name] = GNNAgent(
+            agent_name=agent_name, 
+            parallel_envs=args.testing_episodes,  
+            obs_dim=4,
+            hidden_dim=64,
+            init_weights=shared_model,
+        )
 
     step = 0
     total_rewards = {agent: torch.zeros(args.testing_episodes) for agent in agents}
     while not torch.all(env.finished):
+        # Start
         test_logger.info('=' * 45 + f' STEP {step:2} ' + '=' * 45)
+        # Observe & Action
         agent_actions = {}
         for agent_name, agent_model in agents.items():
             agent_model.observe(observation[agent_name])
-            
+        for agent_name, agent_model in agents.items():
             actions = agent_model.act(env.action_space(agent_name))
-            actions = torch.tensor(actions, device=device, dtype=torch.int32)
             agent_actions[agent_name] = actions
-
+        
+        # Step
         observation, reward, term, trunc, info = env.step(agent_actions)
-
+        
+        # Action log
         test_logger.info('-' * 45 + ' ACTIONS ' + '-' * 45)
         for batch in range(args.testing_episodes):
             batch_actions = ' '.join(f'{agent_name}: {str(agent_actions[batch].tolist()):<10}\t'
                                      for agent_name, agent_actions in agent_actions.items())
             test_logger.info(f'{batch + 1}:\t{batch_actions}')
-
+        # Reward log
         test_logger.info('-' * 45 + ' REWARDS ' + '-' * 45)
         for agent_name in env.agents:
             test_logger.info(f'{agent_name}: {reward[agent_name].tolist()}')
             total_rewards[agent_name] += reward[agent_name]
 
         step += 1
+    
+    # End
+    env.close()
 
     global_total_rewards = {agent: torch.zeros(args.testing_episodes) for agent in agents}
     for agent_name, total_reward in total_rewards.items():
         global_total_rewards[agent_name] += total_reward
-
+    
+    # Summaries
     test_logger.info('=' * 42 + ' TOTAL REWARDS ' + '=' * 42)
     for agent_name, total_reward in total_rewards.items():
         test_logger.info(f'{agent_name}: {total_reward.tolist()}')
@@ -185,7 +191,7 @@ def handle_args() -> argparse.Namespace:
 
 logging.basicConfig(level=logging.INFO, format=FORMAT_STRING)
 main_logger = logging.getLogger('main')
-test_logger = logging.getLogger('baseline')
+test_logger = logging.getLogger('model')
 
 if __name__ == '__main__':
     main()
