@@ -10,8 +10,8 @@ import torch
 import cProfile
 from pstats import Stats
 
-from free_range_zoo.envs import cybersecurity_v0, wildfire_v0, rideshare_v0
-from tests.utils import cybersecurity_configs, wildfire_configs, rideshare_configs
+from free_range_zoo.envs import wildfire_v0
+from tests.utils import wildfire_configs
 
 
 def main():
@@ -34,24 +34,7 @@ def main():
                 observe_other_power=False,
                 observe_other_suppressant=False,
             )
-        case 'cybersecurity':
-            configuration = cybersecurity_configs.non_stochastic()
-            env = cybersecurity_v0.parallel_env(
-                parallel_envs=args.parallel_envs,
-                max_steps=args.steps,
-                configuration=configuration,
-                device=device,
-                buffer_size=args.buffer_size,
-                show_bad_actions=False,
-            )
-        case 'rideshare':
-            configuration = rideshare_configs.non_stochastic()
-            env = rideshare_v0.parallel_env(
-                parallel_envs=args.parallel_envs,
-                max_steps=args.steps,
-                configuration=configuration,
-                device=device,
-            )
+
     observation, _ = env.reset()
 
     profiler = cProfile.Profile()
@@ -91,7 +74,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         'environment',
         type=str,
-        choices=['wildfire', 'cybersecurity', 'rideshare'],
+        choices=['wildfire'],
         help='The environment to profile',
     )
     parser.add_argument('--parallel_envs', type=int, default=10, help='The number of parallel environments')

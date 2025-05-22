@@ -4,7 +4,7 @@ from rendering import render
 
 if __name__ == "__main__":
     # Path to the CSV file
-    csv_path = "/home/alire/repos_wsl/free-range-zoo/outputs/wildfire_logging_test_0/0.csv"
+    csv_path = input("Enter csv path: ") # "path/to/your/csv_file.csv"
 
     # Render mode options: 'human' or 'rgb_array'
     render_mode = "rgb_array"  # Change to "rgb_array" if you want frames
@@ -19,7 +19,10 @@ if __name__ == "__main__":
 
     # frames = frames[::-1]  # Reverse the frames if they appear reversed in the GIF
     # Save frames as a GIF
-    gif_path = "wildfire_simulation.gif"
+    gif_path = input("Enter gif path (rendering.gif): ") 
+    if gif_path == "":
+        gif_path = "rendering.gif"
+
     imageio.mimsave(gif_path, frames, fps=0.5)
     render_mode = "human"  # Change to "rgb_array" if you want frames
 
