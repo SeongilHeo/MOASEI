@@ -1,16 +1,60 @@
+# Team: Markov Mayhem (Winner!)
 
-
-# Team: Markov Mayhem 
-
-MOASEI AAMAS-2025 Competition Configurations 
-
+### MOASEI AAMAS-2025 Competition 
 Track #3: Wildfire (Both Agent and Task Openness)
 
+- Web: [MOASEI](https://oasys-mas.github.io/moasei.html)  
+- GitHub: [oasys-mas/free-range-zoo](https://github.com/oasys-mas/free-range-zoo)  
+- Kaggle: [Competition Configurations](https://www.kaggle.com/datasets/picklecat/moasei-aamas-2025-competition-configurations)
+
+
 ## Members
+University of Utah, Utah, USA
 - Varun Raveendra
 - Seongil Heo
 - Yanxi Lin
 
+## Repository Structure
+The structure of the repository described below:
+```sh
+.
+├── competition_configs                 # Environment configurations
+│   └── wildfire
+├── free_range_zoo                      # Package source
+│   ├── envs                            #    Environment implementations
+│   │   ├── wildfire
+│   │   │   ├── baselines
+│   │   │   ├── configs
+│   │   │   └──  env
+│   │   │       ├── assets
+│   │   │       ├── spaces
+│   │   │       ├── structures
+│   │   │       ├── transitions
+│   │   │       ├── utils
+│   │   │       └── wildfire.py
+│   │   └── wildfire_v0.py
+│   ├── utils                           #    Converters / environment abstract classes
+│   └── wrappers                        #    Model wrappers and utilities
+├── tests                               # Tests
+│    ├── free_range_zoo
+│    │   ├── envs
+│    │   │   └── wildfire
+│    │   │       └──  env               #    Tests for environment utilities
+│    │   │           ├── spaces
+│    │   │           ├── structures
+│    │   │           ├── transitions
+│    │   │           └── utils
+│    │   │       
+│    │   └── utils                      #    Tests for all package utilities
+│    ├── profiles                       # Environment performance profiles
+│    └── utils                          # Testing utilities
+├── run                                 # Scripts for experiments (**ours**)
+├── LICENSE
+├── poetry.lock
+├── pyproject.toml                      # Package dependencies and package definition
+├── README.md
+└── setup.cfg
+```
 ## Usage
 ```sh
 python evaluation.py [OPTIONS] <output> <model> <config>
@@ -37,3 +81,6 @@ python evaluation.py [OPTIONS] <output> <model> <config>
 ```sh
 python run/evaluation.py ./output model/vpg4_100.h5 ./competition_config/wildfire/WS1.pkl --testing_episodes 100
 ```
+## License
+
+[MIT](https://choosealicense.com/licenses/mit/)
