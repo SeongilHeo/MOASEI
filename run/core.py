@@ -9,13 +9,19 @@ from typing import Dict, Any, Tuple
 import numpy as np
 import os, csv
 
-LOSS_CSV_PATH = os.path.join(os.getcwd(), "losses.csv")
-
 from free_range_zoo.utils.agent import Agent
 import free_range_rust
 
+LOSS_CSV_PATH = os.path.join(os.getcwd(), "losses.csv")
+
 class Incidence_graph:
     def __init__(self, node_size=4, all_node=True):
+        """
+        Initialize the incidence graph builder.
+        Args:
+            node_size (int): dimensionality of node feature vectors.
+            all_node (bool): whether to include all other-agent nodes.
+        """
         self.node_size = node_size
 
         self.node_features = []
@@ -39,9 +45,10 @@ class Incidence_graph:
     
     def _add_node(self, feature=None, type=None):
         """
-        Add a node feature vector to the graph.
-        If feature is None: adds a zero vector of size self.node_size.
-        If feature is shorter than node_size: pads with zeros.
+        Add a node to the graph, padding or zero-initializing features, and tag by type.
+        Args:
+            feature (Tensor or None): initial feature vector for the node.
+            type (str): category label for the node (e.g., 'self', 'task').
         """
         if feature is None:
             feature = torch.zeros(self.node_size)
@@ -69,7 +76,8 @@ class Incidence_graph:
 
     def _add_edge(self, src0, dst, src1=None):
         """
-        Add a directed edge from node `src` to node `dst`.
+        Add directed edge(s) from source(s) to destination node.
+        Supports binary hyperedges when two sources provided.
         """
         self.edge_index[0].append(src0)
         self.edge_index[1].append(dst)
@@ -79,6 +87,10 @@ class Incidence_graph:
 
 
     def build(self, self_obs, other_obs, task_obs, t_map):
+        """
+        Construct the incidence graph for a single agent.
+        Maps observations to nodes and connects hyperedges for valid actions.
+        """
         # reset internal buffers
         self.node_features = []
         self.edge_index = [[], []]
@@ -159,6 +171,10 @@ class Incidence_graph:
         )
     
     def build_joint(self, all_self_obs, task_obs, all_t_map):
+        """
+        Construct a joint incidence graph for multiple agents.
+        Each agent node connects to shared tasks via hyperedges.
+        """
         # reset internal buffers
         self.node_features = []
         self.edge_index = [[], []]
@@ -204,7 +220,13 @@ class Incidence_graph:
 
 
 class GNNActor(nn.Module):
+    """
+    Graph Attention Network actor producing task selection logits and suppressant predictions.
+    """
     def __init__(self, input_dim, hidden_dim, output_dim=1, init_weights=None):
+        """
+        Initialize GAT layers and output heads for task and suppressant prediction.
+        """
         super().__init__()
         self.gat1 = GATConv(
             input_dim, 
@@ -239,6 +261,15 @@ class GNNActor(nn.Module):
             self.load_weights(init_weights)
 
     def forward(self, x, edge_index, otheragent_indices=None):
+        """Forward pass through gated attention layers.
+        Args:
+            x (Tensor): node features.
+            edge_index (Tensor): graph connectivity.
+            otheragent_indices (Tensor or None): indices for other-agent nodes.
+        Returns:
+            task_logits (Tensor): raw logits for task/hyperedge nodes.
+            suppressant_logits (Tensor): prediction logits for other-agent suppressant classes.
+        """
         h = F.relu(self.gat1(x, edge_index))
         h = F.relu(self.gat2(h, edge_index))
         h = F.relu(self.final_gat(h, edge_index))
@@ -273,6 +304,9 @@ class GNNActor(nn.Module):
             λ_intent=0.2, 
             λ_belief=0.05#0.0
         ):
+        """Compute combined loss for task selection, suppressant prediction, intent, and belief updates.
+        Logs individual components and total loss to CSV.
+        """
         loss = []
         suppress_loss = []
         intent_loss = []
@@ -372,7 +406,9 @@ class GNNActor(nn.Module):
         return total_loss
         
     def forward_pass(self, data, hyper_mask, t_mappings, otheragent_indices=None):
-        
+        """Run inference: sample an action from task logits and determine intent mapping.
+        Returns environment-formatted actions, raw logits, and intent index.
+        """
         logits, _ = self.forward(data.x, data.edge_index, otheragent_indices)
         logits = logits[hyper_mask]
 
@@ -395,7 +431,7 @@ class GNNActor(nn.Module):
         return env_actions, agent_actions, logits, intent
 
 class GNNAgent(Agent):
-    """Thin Agent that delegates to a shared GNNMultiAgent controller."""
+    """Agent wrapper delegating observation processing and action sampling to GNNActor."""
     def __init__(
         self,
         agent_name: str,
@@ -413,7 +449,9 @@ class GNNAgent(Agent):
         self.graph = Incidence_graph(node_size=obs_dim)
 
     def observe(self, observation: Tuple[Dict[str,Any], Any]) -> None:
-
+        """Process batched observations and compute environment actions.
+        Populates self.actions for subsequent `act` call.
+        """
         for batch in range(self.parallel_envs):
             obs_dict, t_map = observation
             data, hmask, omask, ohmask  = self.graph.build(
@@ -432,11 +470,12 @@ class GNNAgent(Agent):
             self.actions[batch, :] = env_actions
 
     def act(self, action_space: free_range_rust.Space) -> torch.Tensor:
-            
+        """Return precomputed action tensor for the current timestep."""
         return self.actions
         
 
 class COMACritic(nn.Module):
+    """Centralized critic using GAT to estimate joint Q-values for multi-agent actions."""
     def __init__(self, input_dim, hidden_dim, action_dim, num_agents, output_dim=1):
         super(COMACritic, self).__init__()
         self.gat1 = GATConv(
@@ -460,6 +499,7 @@ class COMACritic(nn.Module):
         self.q_out = nn.Linear(hidden_dim + num_agents * action_dim, output_dim)
 
     def forward(self, data, joint_action):
+        """Forward pass computing pooled graph embedding and Q-value for joint actions."""
         x, edge_index = data.x, data.edge_index
         x = F.relu(self.gat1(x, edge_index))
         x = F.relu(self.gat2(x, edge_index))

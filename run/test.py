@@ -9,7 +9,7 @@ import time
 
 
 def main(args):
-    with open(f"competition_configs/wildfire/{args.pkl}.pkl", "rb") as f:
+    with open(f"competition_configs/wildfire/{args.config}.pkl", "rb") as f:
         wildfire_configuration = pickle.load(f)
 
     env = wildfire_v0.parallel_env(
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "-pkl",
+        "-config",
         type=str,
         default="WS1",
         help="",
