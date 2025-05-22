@@ -22,39 +22,25 @@ The structure of the repository described below:
 │   └── wildfire
 ├── free_range_zoo                      # Package source
 │   ├── envs                            #    Environment implementations
-│   │   ├── wildfire
-│   │   │   ├── baselines
-│   │   │   ├── configs
-│   │   │   └──  env
-│   │   │       ├── assets
-│   │   │       ├── spaces
-│   │   │       ├── structures
-│   │   │       ├── transitions
-│   │   │       ├── utils
-│   │   │       └── wildfire.py
-│   │   └── wildfire_v0.py
 │   ├── utils                           #    Converters / environment abstract classes
 │   └── wrappers                        #    Model wrappers and utilities
 ├── tests                               # Tests
-│    ├── free_range_zoo
-│    │   ├── envs
-│    │   │   └── wildfire
-│    │   │       └──  env               #    Tests for environment utilities
-│    │   │           ├── spaces
-│    │   │           ├── structures
-│    │   │           ├── transitions
-│    │   │           └── utils
-│    │   │       
-│    │   └── utils                      #    Tests for all package utilities
+│    ├── free_range_zoo                 #    Tests for the free_range_zoo package
+│    │   ├── envs                       #       environment utilities
+│    │   └── utils                      #       all package utilities
 │    ├── profiles                       # Environment performance profiles
 │    └── utils                          # Testing utilities
-├── run                                 # Scripts for experiments (**ours**)
-├── LICENSE
-├── poetry.lock
+├── run                                 # Experiments (**ours**)
+├── LICENSE                             
+├── poetry.lock                         
 ├── pyproject.toml                      # Package dependencies and package definition
-├── README.md
-└── setup.cfg
+├── README.md                           
+└── setup.cfg                           
 ```
+
+## Installation
+For installation, please refer to the [Installation Guide](https://oasys-mas.github.io/free-range-zoo/introduction/installation.html) for detailed instructions on how to set up the environment and install the required dependencies.
+
 ## Usage
 ```sh
 python evaluation.py [OPTIONS] <output> <model> <config>
@@ -82,5 +68,4 @@ python evaluation.py [OPTIONS] <output> <model> <config>
 python run/evaluation.py ./output model/vpg4_100.h5 ./competition_config/wildfire/WS1.pkl --testing_episodes 100
 ```
 ## License
-
-[MIT](https://choosealicense.com/licenses/mit/)
+This project is licensed under the terms of the [MIT](https://choosealicense.com/licenses/mit/).
