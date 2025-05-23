@@ -15,6 +15,8 @@ import free_range_rust
 
 LOSS_CSV_PATH = os.path.join(os.getcwd(), "losses.csv")
 
+train_logger = logging.getLogger('train')
+
 class Incidence_graph:
     def __init__(self, node_size=4, all_node=True):
         """
@@ -372,7 +374,7 @@ class GNNActor(nn.Module):
             task_logits = logits[hyperedge_mask[i]]
 
             if task_logits.size(0) == 0:
-                print(f"Warning: No valid logits for agent {i}. Skipping this agent.")
+                train_logger.warning(f"No valid logits for agent {i}. Skipping this agent.")
                 continue
 
             action_tensor = torch.tensor(actions[i], dtype=torch.long)
@@ -454,9 +456,9 @@ class GNNActor(nn.Module):
                 writer.writerow(row)
 
         if otheragent_indices is not None:
-            print(f"Task Loss: {task_loss.item()}, Suppressant Loss: {suppressant_loss.item()}, Intent Loss: {intent_loss.item()}")
+            train_logger.info(f"Task Loss: {task_loss.item()}, Suppressant Loss: {suppressant_loss.item()}, Intent Loss: {intent_loss.item()}")
         else:
-            print(f"Task Loss: {task_loss.item()}")
+            train_logger.info(f"Task Loss: {task_loss.item()}")
 
         return total_loss
         

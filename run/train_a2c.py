@@ -11,17 +11,15 @@ from run.utils import (
     load_model,
     save_model,
     plot_reward_curve,
-    plot_loss_curve
+    plot_loss_curve,
+    FORMAT_STRING
 )
-
-FORMAT_STRING = "[%(asctime)s] [%(levelname)8s] [%(name)10s] [%(filename)21s:%(lineno)03d] %(message)s"
 
 def train():
     """
     Train the GNN-based A2C (Advantage Actor Critic) model on a set of environments.
     """
 
-    main_logger.setLevel(args.log_level)
 
     args = handle_args()  # parse command-line arguments
     ENVS = load_configs()  # load environment configurations from file or directory
@@ -37,6 +35,8 @@ def train():
     batch_size = args.batch_size
     curriculum = args.curriculum
     init_model = args.init_model
+
+    train_logger.setLevel(args.log_level)
 
     # Instantiate shared GNN-based actor and its optimizer
     if init_model:
@@ -190,7 +190,7 @@ def train():
 
         # Logging
         epoch_reward = sum(store).item()
-        main_logger.info(f"Epoch: {epoch}, Reward: {epoch_reward}")
+        train_logger.info(f"Epoch: {epoch}, Reward: {epoch_reward}")
         stores['reward'].append(epoch_reward)
         stores['actor_loss'].append(total_loss.item())
         stores['critic_loss'].append(critic_loss.item())
@@ -198,7 +198,7 @@ def train():
     # Plot training curves and save model
     plot_reward_curve(stores['reward'])
     plot_loss_curve(stores['actor_loss'], stores['critic_loss'])
-    save_model(shared_actor, "_a2c")
+    save_model(shared_actor, postfix="_a2c")
 
 
 def handle_args() -> argparse.Namespace:
@@ -251,11 +251,10 @@ def handle_args() -> argparse.Namespace:
         default='INFO', 
         help='Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)'
     )
-
     return parser.parse_args()
 
 logging.basicConfig(level=logging.INFO, format=FORMAT_STRING)
-main_logger = logging.getLogger('main')
+train_logger = logging.getLogger('train')
 
 if __name__ == "__main__":
     train()

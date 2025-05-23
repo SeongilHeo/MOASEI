@@ -2,7 +2,9 @@ import os
 import numpy as np
 import torch
 
-def load_configs(base_path=".", config_path="competition_configs/wildfire"):
+FORMAT_STRING = "[%(asctime)s] [%(levelname)8s] [%(name)10s] [%(filename)21s:%(lineno)03d] %(message)s"
+
+def load_configs(logging_path='train_log',config_path="competition_configs/wildfire"):
     """
     Load and initialize multiple wildfire environments from pickled configuration files.
 
@@ -21,7 +23,7 @@ def load_configs(base_path=".", config_path="competition_configs/wildfire"):
 
     for wildfire_config in wildfire_configs:
         # Load the pickled configuration for each scenario
-        cfg_file = os.path.join(base_path, config_path, f"{wildfire_config}.pkl")
+        cfg_file = os.path.join(config_path, f"{wildfire_config}.pkl")
         with open(cfg_file, 'rb') as f:
             wildfire_configuration = pickle.load(f)
 
@@ -31,7 +33,7 @@ def load_configs(base_path=".", config_path="competition_configs/wildfire"):
             parallel_envs=1,
             configuration=wildfire_configuration,
             device=torch.device('cpu'),
-            log_directory="test_logging",
+            log_directory=f"{logging_path}/csv",
             override_initialization_check=True
         )
         # Apply the action-mapping wrapper to convert discrete actions
@@ -196,7 +198,7 @@ def build_joint_action_tensor(action_history, action_dim):
 
 import matplotlib.pyplot as plt
 
-def plot_reward_curve(stores, output_path='reward_curve.png', save=True):
+def plot_reward_curve(stores, output_path='reward_curve.png', save=True, base_path='.'):
     """
     Plots the reward curve over epochs, including:
       - Raw reward per epoch (light line)
@@ -265,11 +267,12 @@ def plot_reward_curve(stores, output_path='reward_curve.png', save=True):
 
     # Save to file and display
     if save:
-        plt.savefig(output_path)
-        print(f"Saved reward curve to {output_path}")
+        path = os.path.join(base_path, output_path)
+        plt.savefig(path)
+        print(f"Saved reward curve to {path}")
     plt.show()
 
-def plot_loss_curve(actor_loss, critic_loss, output_path='loss_curve.png', save=True):
+def plot_loss_curve(actor_loss, critic_loss, output_path='loss_curve.png', save=True, base_path='.'):
     """
     Plots actor and critic loss curves on shared x-axis with twin y-axes.
 
@@ -308,11 +311,12 @@ def plot_loss_curve(actor_loss, critic_loss, output_path='loss_curve.png', save=
     plt.title('Loss Curve')
     fig.tight_layout()
     if save:
-        plt.savefig(output_path)
-        print(f"Saved loss curve to {output_path}")
+        path = os.path.join(base_path, output_path)
+        plt.savefig(path)
+        print(f"Saved loss curve to {path}")
     plt.show()
 
-def plot_losses_curve(csv_path='losses.csv', output_path='losses_curve.png', save=True):
+def plot_losses_curve(csv_path='losses.csv', output_path='losses_curve.png', save=True, base_path='.'):
     """
     Reads a CSV of logged losses and visualizes each loss component over training steps.
 
@@ -348,6 +352,7 @@ def plot_losses_curve(csv_path='losses.csv', output_path='losses_curve.png', sav
 
     plt.tight_layout()
     if save:
-        plt.savefig(output_path)
-        print(f"Saved losses curve to {output_path}")
+        path = os.path.join(base_path, output_path)
+        plt.savefig(path)
+        print(f"Saved losses curve to {path}")
     plt.show()

@@ -1,7 +1,11 @@
+from email.mime import base
 import torch
 import argparse
+import logging
+import os
 
 from core import Incidence_graph, GNNActor
+from datetime import datetime
 from run.utils import (
     load_configs,
     init_batch,
@@ -10,7 +14,8 @@ from run.utils import (
     load_model,
     save_model,
     plot_reward_curve,
-    plot_losses_curve
+    plot_losses_curve,
+    FORMAT_STRING
 )
 
 def train():
@@ -18,18 +23,27 @@ def train():
     Train the GNN-based Policy Gradient model on a set of environments.
     """
     args = handle_args()  # parse command-line arguments
-    ENVS = load_configs() # load environment configurations from file or directory
 
-    num_envs = len(ENVS)
-    num_agents = 3
 
     # Unpack hyperparameters from args
+    base_path=args.base_path
     input_dim = args.input_dim
     hidden_dim = args.hidden_dim
     batch_size = args.batch_size
     num_episodes = args.num_episodes
     curriculum = args.curriculum
     init_model = args.init_model
+    
+    # Set up logging
+    if base_path is not None:
+        if not os.path.exists(base_path):
+            os.makedirs(base_path)
+
+    ENVS = load_configs(logging_path=base_path) # load environment configurations from file or directory
+    num_envs = len(ENVS)
+    num_agents = 3
+
+    train_logger.setLevel(args.log_level)
 
     # Instantiate shared GNN-based actor and its optimizer
     if init_model:
@@ -156,6 +170,7 @@ def train():
                     batchs[agent_name]['ohmask'],
                     batchs[agent_name]['other_acts'],
                     batchs[agent_name]['outcome'],
+                    logging=True,
                 )
                 for agent_name in agent_names
             ]
@@ -167,11 +182,12 @@ def train():
             
             # Logging
             epoch_reward = sum(store).item()
-            print(f"Epoch: {epoch}, Reward: {epoch_reward}")
+            train_logger.info(f"Epoch: {epoch}, Reward: {epoch_reward}")
+            stores['reward'].append(epoch_reward)
             
-    plot_reward_curve(stores['reward'])
-    plot_losses_curve()
-    save_model(shared_actor, "_pl")
+    plot_reward_curve(stores['reward'], base_path=base_path)
+    plot_losses_curve(base_path=base_path)
+    save_model(shared_actor, base_path=base_path, postfix="_pl")
 
 def handle_args() -> argparse.Namespace:
     """
@@ -216,8 +232,23 @@ def handle_args() -> argparse.Namespace:
         default=None,
         help='path to the initial model weights'
     )
+    parser.add_argument(
+        '--log_level', 
+        type=str, 
+        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], 
+        default='INFO', 
+        help='Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)'
+    )
+    parser.add_argument(
+        '--base_path',
+        type=str,
+        default=f"logging/{datetime.now().strftime("%y%m%d_%H%M%S")}",
+        help='Base path for saving models and logs (defaults to current time yymmdd:hhmmss)'
+    )
     return parser.parse_args()
 
+logging.basicConfig(level=logging.INFO, format=FORMAT_STRING)
+train_logger = logging.getLogger('train')
 
 if __name__ == "__main__":
     train()
