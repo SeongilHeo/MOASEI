@@ -65,7 +65,7 @@ python evaluation.py [OPTIONS] <output> <model> <config>
 
 ## Example
 ```sh
-python run/evaluation.py ./output model/vpg4_100.h5 ./competition_config/wildfire/WS1.pkl --testing_episodes 100
+python run/evaluation.py ./output logging/250519_120000/model_a2c.h5 ./competition_config/wildfire/WS1.pkl --testing_episodes 100
 ```
 ## License
 This project is licensed under the terms of the [MIT](https://choosealicense.com/licenses/mit/).
