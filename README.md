@@ -38,11 +38,11 @@ The structure of the repository described below:
 │    ├── train_a2c.py                   #   Training script for A2C model
 │    ├── train_gnn.py                   #   Training script for GNN model
 │    └── utils.py                       #   Utility functions
-├── LICENSE                             #   License file
-├── poetry.lock                         #   Poetry lock file
-├── pyproject.toml                      #   Package dependencies and package definition
-├── README.md                           #   Project documentation
-└── setup.cfg                           #   Setup configuration
+├── LICENSE                             # License file
+├── poetry.lock                         # Poetry lock file
+├── pyproject.toml                      # Package dependencies and package definition
+├── README.md                           # Project documentation
+└── setup.cfg                           # Setup configuration
 ```
 
 ## Installation
