@@ -30,12 +30,19 @@ The structure of the repository described below:
 │    │   └── utils                      #       all package utilities
 │    ├── profiles                       # Environment performance profiles
 │    └── utils                          # Testing utilities
-├── run                                 # Experiments (**ours**)
-├── LICENSE                             
-├── poetry.lock                         
-├── pyproject.toml                      # Package dependencies and package definition
-├── README.md                           
-└── setup.cfg                           
+├── experiments                         # Experiments (**ours**)
+│    ├── core.py                        #   Core classes definitions (Graph, Actor, Critic, Network)
+│    ├── evaluation.py                  #   Evaluation scripts 
+│    ├── quick_start.py                 #   Quick start guide and example scripts
+│    ├── test.py                        #   Test scripts for the baseline models
+│    ├── train_a2c.py                   #   Training script for A2C model
+│    ├── train_gnn.py                   #   Training script for GNN model
+│    └── utils.py                       #   Utility functions
+├── LICENSE                             #   License file
+├── poetry.lock                         #   Poetry lock file
+├── pyproject.toml                      #   Package dependencies and package definition
+├── README.md                           #   Project documentation
+└── setup.cfg                           #   Setup configuration
 ```
 
 ## Installation
