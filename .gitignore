@@ -1,5 +1,7 @@
 #ours
 logging/*
+report.pdf
+run/
 
 my_secrets.py
 **/plotting/*-paper*

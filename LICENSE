@@ -1,6 +1,8 @@
-free-range-zoo is a collection of PyTorch environment implementations for open reinforcement learning.
+MOASEI: Multi-agent Reinforcement Learning for Open Agent Systems in the Wildfire Domain
 
-Copyright (C) 2024 OASYS Labs
+Copyright (C) 2025 Markov Mayhem
+
+This project is based in part on the free-range-zoo repository: https://github.com/oasys-mas/free-range-zoo which is licensed under the GNU Affero General Public License v3.0.
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 

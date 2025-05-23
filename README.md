@@ -75,4 +75,10 @@ python evaluation.py [OPTIONS] <output> <model> <config>
 python run/evaluation.py ./output logging/250519_120000/model_a2c.h5 ./competition_config/wildfire/WS1.pkl --testing_episodes 100
 ```
 ## License
-This project is licensed under the terms of the [MIT](https://choosealicense.com/licenses/mit/).
+This repository is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+
+This project was developed by **Team Markov Mayhem** as part of the **MOASEI 2025 competition**.
+
+It is based in part on the [free-range-zoo](https://github.com/oasys-mas/free-range-zoo) repository by OASYS Labs, which is also licensed under the AGPL-3.0 license.
+
+All code under the `experiments/` directory was newly developed by the team in 2025.
