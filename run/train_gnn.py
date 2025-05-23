@@ -1,11 +1,10 @@
-from email.mime import base
 import torch
 import argparse
 import logging
 import os
+from datetime import datetime
 
 from core import Incidence_graph, GNNActor
-from datetime import datetime
 from run.utils import (
     load_configs,
     init_batch,
@@ -171,6 +170,7 @@ def train():
                     batchs[agent_name]['other_acts'],
                     batchs[agent_name]['outcome'],
                     logging=True,
+                    base_path=base_path
                 )
                 for agent_name in agent_names
             ]

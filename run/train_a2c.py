@@ -1,6 +1,8 @@
 import torch
 import argparse
 import logging
+import os
+from datetime import datetime
 
 from core import Incidence_graph, GNNActor, COMACritic
 from run.utils import (
@@ -22,19 +24,25 @@ def train():
 
 
     args = handle_args()  # parse command-line arguments
-    ENVS = load_configs()  # load environment configurations from file or directory
-
-    num_envs = len(ENVS)
-    num_agents = 3
-    action_dim = 6  # number of discrete actions
 
     # Unpack hyperparameters from args
+    base_path=args.base_path
     input_dim = args.input_dim
     hidden_dim = args.hidden_dim
     num_episodes = args.num_episodes
     batch_size = args.batch_size
     curriculum = args.curriculum
     init_model = args.init_model
+
+    # Set up logging
+    if base_path is not None:
+        if not os.path.exists(base_path):
+            os.makedirs(base_path)
+
+    ENVS = load_configs(logging_path=base_path) # load environment configurations from file or directory
+    num_envs = len(ENVS)
+    num_agents = 3
+    action_dim = 6  # number of discrete actions
 
     train_logger.setLevel(args.log_level)
 
@@ -196,9 +204,9 @@ def train():
         stores['critic_loss'].append(critic_loss.item())
 
     # Plot training curves and save model
-    plot_reward_curve(stores['reward'])
-    plot_loss_curve(stores['actor_loss'], stores['critic_loss'])
-    save_model(shared_actor, postfix="_a2c")
+    plot_reward_curve(stores['reward'], base_path=base_path)
+    plot_loss_curve(stores['actor_loss'], stores['critic_loss'], base_path=base_path)
+    save_model(shared_actor, base_path=base_path, postfix="_a2c")
 
 
 def handle_args() -> argparse.Namespace:
@@ -250,6 +258,12 @@ def handle_args() -> argparse.Namespace:
         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], 
         default='INFO', 
         help='Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)'
+    )
+    parser.add_argument(
+        '--base_path',
+        type=str,
+        default=f"logging/{datetime.now().strftime("%y%m%d_%H%M%S")}",
+        help='Base path for saving models and logs (defaults to current time yymmdd:hhmmss)'
     )
     return parser.parse_args()
 

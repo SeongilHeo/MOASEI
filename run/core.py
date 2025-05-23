@@ -13,8 +13,6 @@ import os, csv
 from free_range_zoo.utils.agent import Agent
 import free_range_rust
 
-LOSS_CSV_PATH = os.path.join(os.getcwd(), "losses.csv")
-
 train_logger = logging.getLogger('train')
 
 class Incidence_graph:
@@ -343,7 +341,8 @@ class GNNActor(nn.Module):
             λ_suppress=0.1, 
             λ_intent=0.2, 
             λ_belief=0.05,
-            logging=False
+            logging=False,
+            base_path=None
         ):
         """
         Compute combined loss for task selection, suppressant prediction, intent, and belief updates.
@@ -442,6 +441,7 @@ class GNNActor(nn.Module):
             + λ_belief * belief_loss
         )
         if logging:
+            LOSS_CSV_PATH = os.path.join(base_path, "losses.csv")
             # Log losses to CSV
             header = ["task_loss", "suppressant_loss", "intent_loss", "belief_loss", "total_loss"]
             row = [task_loss.item(), suppressant_loss.item(), intent_loss.item(), belief_loss.item(), total_loss.item()]

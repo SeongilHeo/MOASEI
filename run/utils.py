@@ -164,19 +164,15 @@ def save_model(network, base_path=".", postfix=None):
         base_path (str): Root directory for saving (default: current working directory).
         postfix (str or None): Optional string to append to the filename.
     """
-    # Ensure the models directory exists
-    models_dir = os.path.join(base_path, "models")
-    os.makedirs(models_dir, exist_ok=True)
-
     # Build initial filename
     filename = f"model{postfix}.h5"
-    filepath = os.path.join(models_dir, filename)
+    filepath = os.path.join(base_path, filename)
 
     # If the file already exists, prompt the user for a new name
     while os.path.exists(filepath):
         new_name = input(f"'{filename}' already exists. Enter a new model name (without extension): ")
         filename = f"{new_name}.h5"
-        filepath = os.path.join(models_dir, filename)
+        filepath = os.path.join(base_path, filename)
 
     # Serialize the entire network object to disk
     torch.save(network, filepath)
@@ -325,7 +321,7 @@ def plot_losses_curve(csv_path='losses.csv', output_path='losses_curve.png', sav
         output_path (str): Path to save the generated plot.
     """
     import pandas as pd
-
+    csv_path = os.path.join(base_path, csv_path)
     if not os.path.exists(csv_path):
         print(f"CSV file not found: {csv_path}")
         return
