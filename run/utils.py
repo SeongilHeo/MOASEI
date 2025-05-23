@@ -9,7 +9,6 @@ def load_configs(base_path=".", config_path="competition_configs/wildfire"):
     Args:
         base_path (str): Root directory containing the configuration folder.
         config_path (str): Relative path under base_path where config .pkl files live.
-
     Returns:
         list: A list of parallel environments wrapped with action_mapping_wrapper_v0.
     """
@@ -49,7 +48,6 @@ def init_batch(agent_names):
 
     Args:
         agent_names (iterable of str): Names or identifiers of agents.
-
     Returns:
         dict: Mapping from each agent name to a dict of empty lists for tracking:
             - obs: observations
@@ -80,11 +78,8 @@ def discount_cumsum(x, discount):
     Args:
         x (array_like): Input sequence of length N.
         discount (float): Discount factor (typically in [0, 1]).
-
     Returns:
         numpy.ndarray: Array of discounted cumulative sums with the same shape as x.
-
-
     Examples:
         >>> x = [1, 2, 3]
         >>> discount_cumsum(x, discount=0.5)
@@ -110,7 +105,6 @@ def get_fire_outcomes_by_fuel(task_obs_t0, task_obs_t1, intensity_threshold=0.1)
             observations at later time t1.
         intensity_threshold (float, optional): Minimum intensity at t0
             required to consider a location as burning. Defaults to 0.1.
-
     Returns:
         list of int: A list of outcome flags for each burning cell at t0:
             1 if the cell is missing in t1 or its fuel has decreased,
@@ -137,7 +131,6 @@ def reward_to_go(rewards):
 
     Args:
         rewards (list or array-like): Sequence of scalar rewards [r₀, r₁, …, rₜ].
-
     Returns:
         list: reward-to-go for each timestep, i.e.
               [r₀ + r₁ + … + rₜ, r₁ + … + rₜ, …, rₜ].
@@ -153,7 +146,6 @@ def load_model(model_path):
 
     Args:
         model_path (str): Path to the saved model file.
-
     Returns:
         The loaded model object on CPU.
     """
@@ -195,7 +187,6 @@ def build_joint_action_tensor(action_history, action_dim):
     Args:
         action_history (dict): {agent_name: int action}, for a single timestep.
         action_dim (int): Number of possible discrete actions per agent.
-
     Returns:
         torch.Tensor: [1, num_agents * action_dim] one-hot vector.
     """
@@ -205,7 +196,7 @@ def build_joint_action_tensor(action_history, action_dim):
 
 import matplotlib.pyplot as plt
 
-def plot_reward_curve(stores, save=True):
+def plot_reward_curve(stores, output_path='reward_curve.png', save=True):
     """
     Plots the reward curve over epochs, including:
       - Raw reward per epoch (light line)
@@ -274,10 +265,11 @@ def plot_reward_curve(stores, save=True):
 
     # Save to file and display
     if save:
-        plt.savefig('reward_curve.png')
+        plt.savefig(output_path)
+        print(f"Saved reward curve to {output_path}")
     plt.show()
 
-def plot_loss_curve(actor_loss, critic_loss, save=True):
+def plot_loss_curve(actor_loss, critic_loss, output_path='loss_curve.png', save=True):
     """
     Plots actor and critic loss curves on shared x-axis with twin y-axes.
 
@@ -316,5 +308,46 @@ def plot_loss_curve(actor_loss, critic_loss, save=True):
     plt.title('Loss Curve')
     fig.tight_layout()
     if save:
-        plt.savefig('loss_curve.png')
+        plt.savefig(output_path)
+        print(f"Saved loss curve to {output_path}")
+    plt.show()
+
+def plot_losses_curve(csv_path='losses.csv', output_path='losses_curve.png', save=True):
+    """
+    Reads a CSV of logged losses and visualizes each loss component over training steps.
+
+    Args:
+        csv_path (str): Path to the CSV file containing loss data.
+        output_path (str): Path to save the generated plot.
+    """
+    import pandas as pd
+
+    if not os.path.exists(csv_path):
+        print(f"CSV file not found: {csv_path}")
+        return
+    df = pd.read_csv(csv_path)
+
+    # Group and plot per-agent losses by split rows 0,3,6.../1,4,7.../2,5,8...
+    num_agents = 3
+    have_step = 'step' in df.columns
+    fig, axes = plt.subplots(num_agents, 1, figsize=(10, 5 * num_agents))
+    for agent in range(num_agents):
+        agent_df = df.iloc[agent::num_agents].reset_index(drop=True)
+        if have_step:
+            x = agent_df['step']
+        else:
+            x = range(len(agent_df))
+        for col in agent_df.columns:
+            if col != 'step':
+                axes[agent].plot(x, agent_df[col], label=col)
+        axes[agent].set_title(f'Agent {agent+1} Loss Components')
+        axes[agent].set_xlabel('Training Step' if have_step else 'Epochs')
+        axes[agent].set_ylabel('Loss')
+        axes[agent].legend()
+        axes[agent].grid(True)
+
+    plt.tight_layout()
+    if save:
+        plt.savefig(output_path)
+        print(f"Saved losses curve to {output_path}")
     plt.show()

@@ -10,6 +10,7 @@ from run.utils import (
     load_model,
     save_model,
     plot_reward_curve,
+    plot_losses_curve
 )
 
 def train():
@@ -169,6 +170,7 @@ def train():
             print(f"Epoch: {epoch}, Reward: {epoch_reward}")
             
     plot_reward_curve(stores['reward'])
+    plot_losses_curve()
     save_model(shared_actor, "_pl")
 
 def handle_args() -> argparse.Namespace:
@@ -179,37 +181,37 @@ def handle_args() -> argparse.Namespace:
         description='Train A2C on wildfire configurations.'
     )
     parser.add_argument(
-        'input_dim',
+        '--input_dim',
         type=int,
         default=4,
         help='input dimension for the model'
     )
     parser.add_argument(
-        'hidden_dim',
+        '--hidden_dim',
         type=int,
         default=64,
         help='hidden dimension for the model'
     )
     parser.add_argument(
-        'num_episodes',
+        '--num_episodes',
         type=int,
         default=150,
         help='number of episodes to train'
     )
     parser.add_argument(
-        'batch_size',
+        '--batch_size',
         type=int,
         default=32,
         help='batch size for training'
     )
     parser.add_argument(
-        'curriculum',
+        '--curriculum',
         type=bool,
         default=False,
         help='curriculum learning flag (use easier envs first)'
     )
     parser.add_argument(
-        'init_model',
+        '--init_model',
         type=str,
         default=None,
         help='path to the initial model weights'

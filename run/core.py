@@ -1,3 +1,4 @@
+import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -18,6 +19,7 @@ class Incidence_graph:
     def __init__(self, node_size=4, all_node=True):
         """
         Initialize the incidence graph builder.
+
         Args:
             node_size (int): dimensionality of node feature vectors.
             all_node (bool): whether to include all other-agent nodes.
@@ -46,10 +48,12 @@ class Incidence_graph:
     def _add_node(self, feature=None, type=None):
         """
         Add a node to the graph, padding or zero-initializing features, and tag by type.
+
         Args:
             feature (Tensor or None): initial feature vector for the node.
             type (str): category label for the node (e.g., 'self', 'task').
         """
+        # pad or zero-initialize the feature vector
         if feature is None:
             feature = torch.zeros(self.node_size)
         else:
@@ -57,7 +61,8 @@ class Incidence_graph:
             feature = torch.cat([feature, pad], dim=0)
 
         self.node_features.append(feature)
-
+        
+        # add node to the appropriate list based on type
         node_idx = len(self.node_features) - 1
         if type == "self":
             self.self_idx = node_idx
@@ -78,6 +83,11 @@ class Incidence_graph:
         """
         Add directed edge(s) from source(s) to destination node.
         Supports binary hyperedges when two sources provided.
+
+        Args:
+            src0 (int): source node index.
+            dst (int): destination node index.
+            src1 (int or None): optional second source node index for hyperedges.
         """
         self.edge_index[0].append(src0)
         self.edge_index[1].append(dst)
@@ -90,6 +100,17 @@ class Incidence_graph:
         """
         Construct the incidence graph for a single agent.
         Maps observations to nodes and connects hyperedges for valid actions.
+
+        Args:
+            self_obs (Tensor): observation vector for the agent.
+            other_obs (Tensor): observation vectors for other agents.
+            task_obs (Tensor): observation vectors for tasks.
+            t_map (Tensor): mapping of valid tasks to indices.
+        Returns:
+            Data: PyG Data object containing node features and edge indices.
+            hyperedge_mask (Tensor): mask for hyperedge nodes.
+            otheragent_indices (Tensor): indices for other-agent nodes.
+            otheragent_hyperedge_mask (Tensor): mask for other-agent hyperedges.
         """
         # reset internal buffers
         self.node_features = []
@@ -174,6 +195,13 @@ class Incidence_graph:
         """
         Construct a joint incidence graph for multiple agents.
         Each agent node connects to shared tasks via hyperedges.
+
+        Args:
+            all_self_obs (List[Tensor]): list of observation vectors for each agent.
+            task_obs (Tensor): observation vectors for tasks.
+            all_t_map (List[Tensor]): mapping of valid tasks to indices for each agent.
+        Returns:
+            Data: PyG Data object containing node features and edge indices.
         """
         # reset internal buffers
         self.node_features = []
@@ -218,7 +246,6 @@ class Incidence_graph:
 
         return Data(x=x, edge_index=edge_index)
 
-
 class GNNActor(nn.Module):
     """
     Graph Attention Network actor producing task selection logits and suppressant predictions.
@@ -226,6 +253,12 @@ class GNNActor(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim=1, init_weights=None):
         """
         Initialize GAT layers and output heads for task and suppressant prediction.
+
+        Args:
+            input_dim (int): input feature dimension.
+            hidden_dim (int): hidden layer dimension.
+            output_dim (int): output dimension for task selection logits.
+            init_weights (str or None): path to pre-trained weights for initialization.
         """
         super().__init__()
         self.gat1 = GATConv(
@@ -261,7 +294,9 @@ class GNNActor(nn.Module):
             self.load_weights(init_weights)
 
     def forward(self, x, edge_index, otheragent_indices=None):
-        """Forward pass through gated attention layers.
+        """
+        Forward pass through gated attention layers.
+
         Args:
             x (Tensor): node features.
             edge_index (Tensor): graph connectivity.
@@ -283,11 +318,14 @@ class GNNActor(nn.Module):
         return task_logits, suppressant_logits
     
     
-    def load_weights(self, weigth_init):
+    def load_weights(self, weight_init):
         """
         Initialize weights of the GNN layers.
+
+        Args:
+            weight_init (str): path to pre-trained weights.
         """
-        self.load_state_dict(weigth_init.state_dict()) 
+        self.load_state_dict(weight_init.state_dict())
 
     def compute_loss(
             self, 
@@ -302,10 +340,26 @@ class GNNActor(nn.Module):
             fire_outcomes=None, 
             λ_suppress=0.1, 
             λ_intent=0.2, 
-            λ_belief=0.05#0.0
+            λ_belief=0.05,
+            logging=False
         ):
-        """Compute combined loss for task selection, suppressant prediction, intent, and belief updates.
+        """
+        Compute combined loss for task selection, suppressant prediction, intent, and belief updates.
         Logs individual components and total loss to CSV.
+
+        Args:
+            data (Data): graph input.
+            hyperedge_mask (Tensor): mask for hyperedge nodes.
+            actions (List[int]): list of selected actions for each agent.
+            rewards (List[float]): list of rewards for each agent.
+            otheragent_indices (Tensor or None): indices for other-agent nodes.
+            suppressant_labels (List[int] or None): true labels for suppressant classes.
+            intent_hyperedge_mask (Tensor or None): mask for intent hyperedges.
+            intent_labels (List[int] or None): true labels for intent hyperedges.
+            fire_outcomes (List[float] or None): fire outcomes for belief updates.
+            λ_suppress, λ_intent, λ_belief (float): loss weighting factors.
+        Returns:
+            total_loss (Tensor): combined loss for the batch.
         """
         loss = []
         suppress_loss = []
@@ -385,18 +439,19 @@ class GNNActor(nn.Module):
             + λ_intent * intent_loss
             + λ_belief * belief_loss
         )
-        # Log losses to CSV
-        header = ["task_loss", "suppressant_loss", "intent_loss", "belief_loss", "total_loss"]
-        row = [task_loss.item(), suppressant_loss.item(), intent_loss.item(), belief_loss.item(), total_loss.item()]
-        # write header if file not exists
-        if not os.path.exists(LOSS_CSV_PATH):
-            with open(LOSS_CSV_PATH, 'w', newline='') as f:
+        if logging:
+            # Log losses to CSV
+            header = ["task_loss", "suppressant_loss", "intent_loss", "belief_loss", "total_loss"]
+            row = [task_loss.item(), suppressant_loss.item(), intent_loss.item(), belief_loss.item(), total_loss.item()]
+            # write header if file not exists
+            if not os.path.exists(LOSS_CSV_PATH):
+                with open(LOSS_CSV_PATH, 'w', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(header)
+            # append row
+            with open(LOSS_CSV_PATH, 'a', newline='') as f:
                 writer = csv.writer(f)
-                writer.writerow(header)
-        # append row
-        with open(LOSS_CSV_PATH, 'a', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(row)
+                writer.writerow(row)
 
         if otheragent_indices is not None:
             print(f"Task Loss: {task_loss.item()}, Suppressant Loss: {suppressant_loss.item()}, Intent Loss: {intent_loss.item()}")
@@ -406,8 +461,20 @@ class GNNActor(nn.Module):
         return total_loss
         
     def forward_pass(self, data, hyper_mask, t_mappings, otheragent_indices=None):
-        """Run inference: sample an action from task logits and determine intent mapping.
+        """
+        Run inference: sample an action from task logits and determine intent mapping.
         Returns environment-formatted actions, raw logits, and intent index.
+
+        Args:
+            data (Data): graph input.
+            hyper_mask (Tensor): mask for hyperedge nodes.
+            t_mappings (Tensor): mapping of valid tasks to indices.
+            otheragent_indices (Tensor or None): indices for other-agent nodes.
+        Returns:
+            env_actions (Tensor): environment-formatted actions.
+            agent_actions (int): sampled action index.
+            logits (Tensor): raw logits for task/hyperedge nodes.
+            intent (int): index of the selected intent hyperedge.
         """
         logits, _ = self.forward(data.x, data.edge_index, otheragent_indices)
         logits = logits[hyper_mask]
@@ -431,7 +498,16 @@ class GNNActor(nn.Module):
         return env_actions, agent_actions, logits, intent
 
 class GNNAgent(Agent):
-    """Agent wrapper delegating observation processing and action sampling to GNNActor."""
+    """
+    Agent wrapper delegating observation processing and action sampling to GNNActor.
+
+    Args:
+        agent_name (str): name of the agent.
+        parallel_envs (int): number of parallel environments.
+        obs_dim (int): dimensionality of observation space.
+        hidden_dim (int): dimensionality of hidden layers in GNNActor.
+        init_weights (str or None): path to pre-trained weights for initialization.
+    """
     def __init__(
         self,
         agent_name: str,
@@ -449,8 +525,12 @@ class GNNAgent(Agent):
         self.graph = Incidence_graph(node_size=obs_dim)
 
     def observe(self, observation: Tuple[Dict[str,Any], Any]) -> None:
-        """Process batched observations and compute environment actions.
+        """
+        Process batched observations and compute environment actions.
         Populates self.actions for subsequent `act` call.
+
+        Args:
+            observation (Tuple[Dict[str, Any], Any]): batched observations from the environment.
         """
         for batch in range(self.parallel_envs):
             obs_dict, t_map = observation
@@ -470,12 +550,27 @@ class GNNAgent(Agent):
             self.actions[batch, :] = env_actions
 
     def act(self, action_space: free_range_rust.Space) -> torch.Tensor:
-        """Return precomputed action tensor for the current timestep."""
+        """
+        Return precomputed action tensor for the current timestep.
+
+        Args:
+            action_space (free_range_rust.Space): action space of the environment.
+        Returns:
+            torch.Tensor: action tensor for the current timestep.
+        """
         return self.actions
         
-
 class COMACritic(nn.Module):
-    """Centralized critic using GAT to estimate joint Q-values for multi-agent actions."""
+    """
+    Centralized critic using GAT to estimate joint Q-values for multi-agent actions.
+
+    Args:
+        input_dim (int): input feature dimension.
+        hidden_dim (int): hidden layer dimension.
+        action_dim (int): dimensionality of joint action space.
+        num_agents (int): number of agents in the environment.
+        output_dim (int): output dimension for Q-value prediction.
+    """
     def __init__(self, input_dim, hidden_dim, action_dim, num_agents, output_dim=1):
         super(COMACritic, self).__init__()
         self.gat1 = GATConv(
@@ -499,7 +594,15 @@ class COMACritic(nn.Module):
         self.q_out = nn.Linear(hidden_dim + num_agents * action_dim, output_dim)
 
     def forward(self, data, joint_action):
-        """Forward pass computing pooled graph embedding and Q-value for joint actions."""
+        """
+        Forward pass computing pooled graph embedding and Q-value for joint actions.
+
+        Args:
+            data (Data): graph input.
+            joint_action (Tensor): one-hot tensor of shape [batch_size, num_agents * action_dim].
+        Returns:
+            q (Tensor): predicted Q-value for the joint action.
+        """
         x, edge_index = data.x, data.edge_index
         x = F.relu(self.gat1(x, edge_index))
         x = F.relu(self.gat2(x, edge_index))
@@ -523,11 +626,15 @@ class COMACritic(nn.Module):
 
     def compute_advantage(self, agent_index, data, joint_action, logits):
         """
+        Compute the advantage function for a given agent's action.
+
         Args:
             agent_index (int): index of the agent
             data (Data): graph input
             joint_action (Tensor): one-hot tensor of shape [batch_size, num_agents * action_dim]
             logits (Tensor): unnormalized logits for this agent of shape [batch_size, action_dim]
+        Returns:
+            advantage (Tensor): advantage value for the agent's action 
         """
         q_value = self.forward(data, joint_action).squeeze()
 
@@ -560,7 +667,6 @@ class COMACritic(nn.Module):
             data_list (List[Data]): list of torch_geometric.data.Data objects
             joint_actions (Tensor): tensor of shape [batch_size, num_agents * action_dim]
             target_q_values (Tensor): tensor of shape [batch_size]
-
         Returns:
             torch.Tensor: scalar MSE loss
         """
@@ -572,4 +678,3 @@ class COMACritic(nn.Module):
         q_preds = torch.stack(q_preds)  # [batch_size]
         loss = F.mse_loss(q_preds, torch.tensor(np.array(target_q_values), dtype=torch.float32))
         return loss
-

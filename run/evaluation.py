@@ -15,7 +15,6 @@ from free_range_zoo.envs import wildfire_v0
 from free_range_zoo.wrappers.action_task import action_mapping_wrapper_v0
 from free_range_zoo.envs.wildfire.env.utils.rendering import render
 
-
 from core import GNNAgent
 
 FORMAT_STRING = "[%(asctime)s] [%(levelname)8s] [%(name)10s] [%(filename)21s:%(lineno)03d] %(message)s"

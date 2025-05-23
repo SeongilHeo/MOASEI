@@ -1,5 +1,6 @@
 import torch
 import argparse
+import logging
 
 from core import Incidence_graph, GNNActor, COMACritic
 from run.utils import (
@@ -13,10 +14,15 @@ from run.utils import (
     plot_loss_curve
 )
 
+FORMAT_STRING = "[%(asctime)s] [%(levelname)8s] [%(name)10s] [%(filename)21s:%(lineno)03d] %(message)s"
+
 def train():
     """
     Train the GNN-based A2C (Advantage Actor Critic) model on a set of environments.
     """
+
+    main_logger.setLevel(args.log_level)
+
     args = handle_args()  # parse command-line arguments
     ENVS = load_configs()  # load environment configurations from file or directory
 
@@ -184,14 +190,14 @@ def train():
 
         # Logging
         epoch_reward = sum(store).item()
-        print(f"Epoch: {epoch}, Reward: {epoch_reward}")
+        main_logger.info(f"Epoch: {epoch}, Reward: {epoch_reward}")
         stores['reward'].append(epoch_reward)
         stores['actor_loss'].append(total_loss.item())
         stores['critic_loss'].append(critic_loss.item())
 
     # Plot training curves and save model
     plot_reward_curve(stores['reward'])
-    plot_loss_curve(stores)
+    plot_loss_curve(stores['actor_loss'], stores['critic_loss'])
     save_model(shared_actor, "_a2c")
 
 
@@ -203,43 +209,53 @@ def handle_args() -> argparse.Namespace:
         description='Train A2C on wildfire configurations.'
     )
     parser.add_argument(
-        'input_dim',
+        '--input_dim',
         type=int,
         default=4,
         help='input dimension for the model'
     )
     parser.add_argument(
-        'hidden_dim',
+        '--hidden_dim',
         type=int,
         default=64,
         help='hidden dimension for the model'
     )
     parser.add_argument(
-        'num_episodes',
+        '--num_episodes',
         type=int,
         default=150,
         help='number of episodes to train'
     )
     parser.add_argument(
-        'batch_size',
+        '--batch_size',
         type=int,
         default=32,
         help='batch size for training'
     )
     parser.add_argument(
-        'curriculum',
+        '--curriculum',
         type=bool,
         default=False,
         help='curriculum learning flag (use easier envs first)'
     )
     parser.add_argument(
-        'init_model',
+        '--init_model',
         type=str,
         default=None,
         help='path to initial model weights'
     )
+    parser.add_argument(
+        '--log_level', 
+        type=str, 
+        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], 
+        default='INFO', 
+        help='Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)'
+    )
+
     return parser.parse_args()
 
+logging.basicConfig(level=logging.INFO, format=FORMAT_STRING)
+main_logger = logging.getLogger('main')
 
 if __name__ == "__main__":
     train()
