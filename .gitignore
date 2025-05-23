@@ -1,3 +1,6 @@
+#ours
+logging/*
+
 my_secrets.py
 **/plotting/*-paper*
 *.csv
