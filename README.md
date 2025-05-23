@@ -36,7 +36,7 @@ The structure of the repository described below:
 │    ├── quick_start.py                 #   Quick start guide and example scripts
 │    ├── test.py                        #   Test scripts for the baseline models
 │    ├── train_a2c.py                   #   Training script for A2C model
-│    ├── train_gnn.py                   #   Training script for GNN model
+│    ├── train_gnn.py                   #   Training script for PL model
 │    └── utils.py                       #   Utility functions
 ├── LICENSE                             # License file
 ├── poetry.lock                         # Poetry lock file
